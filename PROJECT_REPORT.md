@@ -17,53 +17,56 @@
 
 ```mermaid
 graph TD
-    subgraph Client Layer
-        A[Mobile Camera - Rear / Front Toggle]
-        B[Desktop Webcam]
-        C[File Upload & Drag-and-Drop]
-        D[Sample Food Showcase]
+    subgraph Client_Layer ["Client Layer"]
+        A["Mobile Camera (Rear / Front Toggle)"]
+        B["Desktop Webcam"]
+        C["File Upload (JPEG, PNG, WEBP)"]
+        D["Sample Food Showcase"]
     end
 
-    subgraph Web & Application Layer
-        E[FastAPI Backend - http://0.0.0.0:8000]
-        F[Static Asset Server - HTML5 / WebRTC / Tailwind]
-        G[Rotating File Logger - logs/foodvision.log]
+    subgraph App_Layer ["FastAPI Application Layer"]
+        E["FastAPI Server (:8000)"]
+        F["Static Web UI (HTML5, WebRTC, Tailwind)"]
+        G["Rotating Logger (logs/foodvision.log)"]
     end
 
-    subgraph Deep Learning Vision Engine
-        H[Pretrained Vision Transformer - nateraw/food]
-        I[PyTorch Training Loop - models/train.py]
-        J[Kaggle Dataset Downloader - data/kaggle_downloader.py]
+    subgraph Vision_Engine ["Deep Learning Vision Engine"]
+        H["Vision Transformer (nateraw/food)"]
+        I["PyTorch Training Loop (models/train.py)"]
+        J["Kaggle Downloader (data/kaggle_downloader.py)"]
     end
 
-    subgraph Health Intelligence & Local AI
-        K[Nutrition Knowledge Base - 101 Classes]
-        L[Portion Multiplier & Burn Calculator]
-        M[Local LLM Diagnosis - Ollama llama3/qwen2.5]
-        N[Deterministic Clinical Nutrition Engine Fallback]
+    subgraph Health_Engine ["Health Intelligence & Local AI"]
+        K["Nutrition Knowledge Base (101 Classes)"]
+        L["Portion & Burn Calculator"]
+        M["Local LLM (Ollama llama3/qwen2.5)"]
+        N["Clinical Expert System Fallback"]
     end
 
-    A -->|Video Frame Snapshot| E
-    B -->|Webcam Frame| E
-    C -->|JPEG / PNG / WEBP| E
-    D -->|Real Food Photo| E
+    A -->|"Video Frame Snapshot"| E
+    B -->|"Webcam Frame"| E
+    C -->|"Image File"| E
+    D -->|"Sample Dish Photo"| E
 
     E --> G
     E --> H
-    H -->|Top-1 & Top-5 Logits| E
+    H -->|"Top-1 & Top-5 Probabilities"| E
     E --> K
     K --> L
     L --> E
     E --> M
-    M -.->|If Ollama Offline| N
-    M -->|Clinical Health Assessment| E
-    N -->|Evidence-Based Diagnosis| E
+    M -.->|"If Ollama Offline"| N
+    M -->|"Clinical Diagnosis"| E
+    N -->|"Clinical Diagnosis"| E
 
-    J -->|Food-101 Images| I
-    I -->|Trained Weights| H
+    J -->|"Food-101 Images"| I
+    I -->|"Trained Weights"| H
 
-    E -->|JSON Response| F
-    F -->|Interactive Dashboard & Chat UI| Client Layer
+    E -->|"JSON API Response"| F
+    F -->|"Dashboard & Chatbot"| A
+    F -->|"Dashboard & Chatbot"| B
+    F -->|"Dashboard & Chatbot"| C
+    F -->|"Dashboard & Chatbot"| D
 ```
 
 ---
@@ -88,12 +91,14 @@ graph TD
 - **Vision Model**: `nateraw/food` (a fine-tuned `google/vit-base-patch16-224` Vision Transformer trained on the Food-101 benchmark).
 - **Processing Pipeline**:
   1. Image bytes are decoded into an RGB `PIL.Image`.
-  2. The image is resized to $224 \times 224$ and normalized using ImageNet statistics:
-     $$\mu = [0.485, 0.456, 0.406], \quad \sigma = [0.229, 0.224, 0.225]$$
+  2. The image is resized to `224 x 224` and normalized using ImageNet statistics:
+     - `Normalized Pixel = (Pixel - Mean) / StdDev`
+     - `Mean = [0.485, 0.456, 0.406]`
+     - `StdDev = [0.229, 0.224, 0.225]`
   3. The tensor is fed into the Vision Transformer.
   4. The model computes raw classification logits across **101 fine-grained classes**.
   5. Softmax calculates probability distribution:
-     $$P(y = c \mid x) = \frac{e^{z_c}}{\sum_{j=1}^{101} e^{z_j}}$$
+     - `Probability(Class c | Image) = exp(Logit_c) / Sum(exp(Logit_j))`
   6. `torch.topk` returns the Top-1 identified food and Top-5 ranked alternatives.
 - **Inference Latency**: ~380ms - 520ms on standard CPU.
 
@@ -101,18 +106,20 @@ graph TD
 
 ### **Step 3: Nutritional & Calorie Calculation Engine**
 - **Knowledge Base**: `data/nutrition_db.json` containing standardized nutritional data for all 101 Food-101 classes.
-- **Portion Scaling**: All metrics scale dynamically based on the selected multiplier ($m \in [0.5, 2.0]$):
-  - $\text{Calories} = \text{Base Calories} \times m$
-  - $\text{Macronutrients}: \text{Protein (g)}, \text{Carbohydrates (g)}, \text{Total Fat (g)}, \text{Saturated Fat (g)}, \text{Fiber (g)}, \text{Sugar (g)}$
-  - $\text{Micronutrients}: \text{Sodium (mg)}, \text{Potassium (mg)}, \text{Calcium (mg)}, \text{Iron (mg)}, \text{Vitamin C (mg)}$
+- **Portion Scaling**: All metrics scale dynamically based on the selected multiplier (`m` from 0.5x to 2.0x):
+  - `Calories = Base Calories × Portion Multiplier`
+  - `Macronutrients: Protein (g), Carbohydrates (g), Total Fat (g), Saturated Fat (g), Fiber (g), Sugar (g)`
+  - `Micronutrients: Sodium (mg), Potassium (mg), Calcium (mg), Iron (mg), Vitamin C (mg)`
 - **Caloric Ratios**: Computes percentage contributions to total energy:
-  $$\% \text{Protein} = \frac{\text{Protein (g)} \times 4}{\text{Total Macro Calories}} \times 100$$
+  - `Protein % = (Protein (g) × 4 / Total Macro Calories) × 100`
+  - `Carbs % = (Carbs (g) × 4 / Total Macro Calories) × 100`
+  - `Fat % = (Fat (g) × 9 / Total Macro Calories) × 100`
 - **Allergen Alerting**: Automatically checks for allergens (Gluten, Dairy, Peanuts, Tree Nuts, Shellfish, Soy, Eggs).
 - **Exercise Burn Estimator**: Calculates physical activity duration to expend intake:
-  - $\text{Walking} \approx \frac{\text{Calories}}{4.5\text{ kcal/min}}$
-  - $\text{Running} \approx \frac{\text{Calories}}{11.5\text{ kcal/min}}$
-  - $\text{Cycling} \approx \frac{\text{Calories}}{8.5\text{ kcal/min}}$
-  - $\text{Swimming} \approx \frac{\text{Calories}}{10.0\text{ kcal/min}}$
+  - `Walking Time ≈ Calories / 4.5 kcal per minute`
+  - `Running Time ≈ Calories / 11.5 kcal per minute`
+  - `Cycling Time ≈ Calories / 8.5 kcal per minute`
+  - `Swimming Time ≈ Calories / 10.0 kcal per minute`
 
 ---
 
