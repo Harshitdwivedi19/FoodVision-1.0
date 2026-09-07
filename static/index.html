@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FoodVision 1.0 - AI Food Classification & Nutrition Intelligence</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-bold">
+          <i data-lucide="utensils" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+            FoodVision <span class="text-xs bg-emerald-500/20 text-emerald-400 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">1.0 PRO</span>
+          </h1>
+          <p class="text-xs text-slate-400">Deep Learning Nutrition & Clinical Diagnosis</p>
+        </div>
+      </div>
+
+      <!-- System Status Indicators -->
+      <div class="flex items-center gap-3">
+        <div id="statusIndicator" class="flex items-center gap-2 text-xs bg-slate-800/80 border border-slate-700/60 px-3 py-1.5 rounded-full">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="statusText" class="text-slate-300 font-medium">Connecting...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Camera & Input Center (5 cols) -->
+    <div class="lg:col-span-5 flex flex-col gap-5">
+
+      <!-- Viewport & Capture Card -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+        <!-- Input Mode Switcher Tabs -->
+        <div class="flex border-b border-slate-800 bg-slate-950/40 p-1.5 gap-1 text-xs font-medium">
+          <button id="tabCamera" class="tab-btn active flex-1 py-2 rounded-lg flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="camera" class="w-4 h-4"></i> Live Camera
+          </button>
+          <button id="tabUpload" class="tab-btn flex-1 py-2 rounded-lg flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200">
+            <i data-lucide="upload" class="w-4 h-4"></i> File Upload
+          </button>
+          <button id="tabSamples" class="tab-btn flex-1 py-2 rounded-lg flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200">
+            <i data-lucide="sparkles" class="w-4 h-4"></i> Samples
+          </button>
+        </div>
+
+        <!-- CAMERA VIEWPORT -->
+        <div id="cameraContainer" class="relative aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
+          <video id="videoFeed" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <canvas id="captureCanvas" class="hidden"></canvas>
+          <img id="freezeFrame" class="hidden w-full h-full object-cover" alt="Captured Food" />
+
+          <!-- Viewfinder Target Reticle -->
+          <div id="viewfinder" class="absolute inset-8 pointer-events-none border border-white/20 rounded-2xl flex items-center justify-center">
+            <div class="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg"></div>
+            <div class="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg"></div>
+            <div class="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg"></div>
+            <div class="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br-lg"></div>
+            <span class="text-[11px] font-mono tracking-wider text-emerald-400/80 bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm border border-emerald-500/20">
+              ALIGN FOOD IN FRAME
+            </span>
+          </div>
+
+          <!-- Camera Switch Floating Button (Flip Mobile Front/Rear Camera) -->
+          <button id="flipCameraBtn" title="Switch Camera (Front/Rear)" class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 shadow-lg backdrop-blur-sm transition">
+            <i data-lucide="switch-camera" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Camera Loading Spinner -->
+          <div id="cameraLoading" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3">
+            <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-xs text-slate-400 font-medium">Initializing camera feed...</p>
+          </div>
+        </div>
+
+        <!-- FILE UPLOAD CONTAINER (Hidden by default) -->
+        <div id="uploadContainer" class="hidden aspect-[4/3] bg-slate-950 p-6 flex flex-col items-center justify-center text-center">
+          <input type="file" id="fileInput" accept="image/*" class="hidden" />
+          <div id="dropZone" class="w-full h-full border-2 border-dashed border-slate-800 hover:border-emerald-500/50 rounded-xl flex flex-col items-center justify-center p-4 cursor-pointer transition">
+            <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
+              <i data-lucide="image-plus" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold text-slate-200">Click to upload food photo</p>
+            <p class="text-xs text-slate-500 mt-1">or drag and drop here (JPG, PNG, WEBP)</p>
+          </div>
+        </div>
+
+        <!-- SAMPLE FOODS CONTAINER (Hidden by default) -->
+        <div id="samplesContainer" class="hidden aspect-[4/3] bg-slate-950 p-4 overflow-y-auto">
+          <p class="text-xs text-slate-400 mb-3 font-medium">Select a sample food to test classification & diagnosis:</p>
+          <div class="grid grid-cols-3 gap-2" id="sampleGrid">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- Controls Toolbar -->
+        <div class="p-4 bg-slate-900/90 border-t border-slate-800 flex flex-col gap-3">
+          <!-- Portion Multiplier Selector -->
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="scale" class="w-3.5 h-3.5"></i> Portion Size:
+            </span>
+            <div class="flex gap-1.5" id="portionButtons">
+              <button data-portion="0.5" class="portion-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">0.5x (Snack)</button>
+              <button data-portion="1.0" class="portion-btn active px-2.5 py-1 rounded bg-emerald-600 text-white font-medium transition">1.0x (Regular)</button>
+              <button data-portion="1.5" class="portion-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">1.5x (Large)</button>
+              <button data-portion="2.0" class="portion-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">2.0x (Double)</button>
+            </div>
+          </div>
+
+          <!-- Primary Shutter Action Button -->
+          <div class="flex gap-2">
+            <button id="captureBtn" class="flex-1 py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-[0.99] text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition">
+              <i data-lucide="scan" class="w-5 h-5"></i>
+              <span>Classify & Diagnose Food</span>
+            </button>
+            <button id="retakeBtn" class="hidden py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition" title="Retake Photo">
+              <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Tips Card -->
+      <div class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-400 flex items-start gap-3">
+        <i data-lucide="info" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+        <div>
+          <span class="text-slate-200 font-semibold">Pro-tip for accurate classification:</span>
+          Point your camera directly above the plate with sufficient lighting. If on a smartphone, use the flip button to switch to your high-resolution rear camera.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Health Intelligence Dashboard (7 cols) -->
+    <div class="lg:col-span-7 flex flex-col gap-5">
+
+      <!-- WELCOME PLACEHOLDER (Shown before first scan) -->
+      <div id="welcomePlaceholder" class="bg-slate-900/60 border border-slate-800 rounded-2xl p-10 flex flex-col items-center justify-center text-center my-auto min-h-[420px]">
+        <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-emerald-400 mb-4 shadow-inner">
+          <i data-lucide="camera" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-lg font-bold text-slate-200">No Food Scanned Yet</h2>
+        <p class="text-xs text-slate-400 max-w-sm mt-2 leading-relaxed">
+          Capture a photo with your camera or select a sample to classify the dish, view caloric & macro density, and receive in-depth clinical diagnosis from the Local LLM.
+        </p>
+      </div>
+
+      <!-- RESULTS CONTAINER (Hidden until first scan) -->
+      <div id="resultsContainer" class="hidden flex flex-col gap-5">
+
+        <!-- 1. Identification Header Card -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="foodCategory" class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Category</span>
+                <span id="inferenceLatency" class="text-[11px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono">24ms</span>
+              </div>
+              <h2 id="foodName" class="text-2xl font-black text-white mt-1">Identified Food</h2>
+              <p id="servingDesc" class="text-xs text-slate-400 mt-0.5">1 standard serving</p>
+            </div>
+
+            <!-- Health Score Badge -->
+            <div class="flex flex-col items-end">
+              <div class="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700/60">
+                <span class="text-xs text-slate-400">Health Index:</span>
+                <span id="healthScore" class="text-base font-black text-emerald-400">85</span>
+                <span class="text-xs text-slate-500">/100</span>
+              </div>
+              <span id="healthGradeBadge" class="text-[10px] font-bold mt-1 text-slate-400">Grade: A</span>
+            </div>
+          </div>
+
+          <!-- Confidence Meter -->
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-400">Model Confidence</span>
+              <span id="confidencePct" class="text-emerald-400 font-bold">96.4%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div id="confidenceBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+            </div>
+
+            <!-- Top Alternatives Accordion/Pills -->
+            <div id="alternativesList" class="flex flex-wrap gap-2 mt-3 text-[11px]">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Caloric & Macronutrient Breakdown -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <!-- Calories -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium">Calories</span>
+            <div class="my-1">
+              <span id="valCalories" class="text-2xl font-black text-white">0</span>
+              <span class="text-xs text-slate-400 font-normal"> kcal</span>
+            </div>
+            <span class="text-[10px] text-slate-500">Total Energy</span>
+          </div>
+
+          <!-- Protein -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium flex items-center justify-between">
+              Protein <span id="pctProtein" class="text-[10px] text-blue-400">0%</span>
+            </span>
+            <div class="my-1">
+              <span id="valProtein" class="text-2xl font-black text-blue-400">0</span>
+              <span class="text-xs text-slate-400 font-normal"> g</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="barProtein" class="bg-blue-400 h-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Carbs -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium flex items-center justify-between">
+              Carbs <span id="pctCarbs" class="text-[10px] text-amber-400">0%</span>
+            </span>
+            <div class="my-1">
+              <span id="valCarbs" class="text-2xl font-black text-amber-400">0</span>
+              <span class="text-xs text-slate-400 font-normal"> g</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="barCarbs" class="bg-amber-400 h-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Fat -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium flex items-center justify-between">
+              Total Fat <span id="pctFat" class="text-[10px] text-rose-400">0%</span>
+            </span>
+            <div class="my-1">
+              <span id="valFat" class="text-2xl font-black text-rose-400">0</span>
+              <span class="text-xs text-slate-400 font-normal"> g</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="barFat" class="bg-rose-400 h-full" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Bioactives, Allergens & Dietary Profile -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+            <span class="text-slate-300 font-bold flex items-center gap-1.5">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i> Allergens & Dietary Attributes
+            </span>
+            <span id="glycemicIndexBadge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300">Glycemic: Medium</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2" id="allergenBadges">
+            <!-- Populated via JS -->
+          </div>
+
+          <!-- Micronutrients row -->
+          <div class="grid grid-cols-5 gap-2 pt-2 border-t border-slate-800/60 text-center text-xs">
+            <div>
+              <span class="text-[10px] text-slate-500 block">Fiber</span>
+              <span id="microFiber" class="font-bold text-slate-200">0g</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 block">Sugar</span>
+              <span id="microSugar" class="font-bold text-slate-200">0g</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 block">Sodium</span>
+              <span id="microSodium" class="font-bold text-slate-200">0mg</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 block">Potassium</span>
+              <span id="microPotassium" class="font-bold text-slate-200">0mg</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 block">Iron</span>
+              <span id="microIron" class="font-bold text-slate-200">0mg</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Burn-Off Physical Activity Estimator -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4">
+          <h3 class="text-xs font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i> Physical Activity to Burn Intake
+          </h3>
+          <div class="grid grid-cols-4 gap-2 text-center text-xs">
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+              <i data-lucide="footprints" class="w-4 h-4 text-emerald-400 mx-auto mb-1"></i>
+              <span id="burnWalking" class="font-bold text-white block text-sm">0</span>
+              <span class="text-[10px] text-slate-400">mins Walk</span>
+            </div>
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+              <i data-lucide="zap" class="w-4 h-4 text-amber-400 mx-auto mb-1"></i>
+              <span id="burnRunning" class="font-bold text-white block text-sm">0</span>
+              <span class="text-[10px] text-slate-400">mins Run</span>
+            </div>
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+              <i data-lucide="bike" class="w-4 h-4 text-cyan-400 mx-auto mb-1"></i>
+              <span id="burnCycling" class="font-bold text-white block text-sm">0</span>
+              <span class="text-[10px] text-slate-400">mins Cycling</span>
+            </div>
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+              <i data-lucide="waves" class="w-4 h-4 text-blue-400 mx-auto mb-1"></i>
+              <span id="burnSwimming" class="font-bold text-white block text-sm">0</span>
+              <span class="text-[10px] text-slate-400">mins Swim</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. LOCAL LLM CLINICAL DIAGNOSIS -->
+        <div class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-sm text-white">Local AI Clinical Diagnosis</h3>
+                <span id="llmProviderTag" class="text-[10px] text-slate-400">Powered by Ollama / Local Engine</span>
+              </div>
+            </div>
+
+            <!-- Trigger Re-Diagnose button -->
+            <button id="refreshDiagnosisBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i> Re-evaluate
+            </button>
+          </div>
+
+          <!-- Suitability Matrix -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="suitabilityGrid">
+            <!-- Weight Loss, Muscle, Diabetic, Keto, Heart Health -->
+          </div>
+
+          <!-- Clinical Summary -->
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5">
+            <p id="clinicalSummaryText" class="text-xs text-slate-300 leading-relaxed">
+              Evaluating metabolic and digestive response...
+            </p>
+          </div>
+
+          <!-- Benefits and Cautions Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <!-- Benefits -->
+            <div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-3">
+              <h4 class="font-semibold text-emerald-400 flex items-center gap-1.5 mb-2">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i> Health Benefits
+              </h4>
+              <ul id="benefitsList" class="space-y-1.5 text-slate-300">
+                <!-- Populated via JS -->
+              </ul>
+            </div>
+
+            <!-- Cautions -->
+            <div class="bg-amber-950/20 border border-amber-900/40 rounded-xl p-3">
+              <h4 class="font-semibold text-amber-400 flex items-center gap-1.5 mb-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i> Dietary Cautions
+              </h4>
+              <ul id="cautionsList" class="space-y-1.5 text-slate-300">
+                <!-- Populated via JS -->
+              </ul>
+            </div>
+          </div>
+
+          <!-- Actionable Swaps -->
+          <div class="bg-slate-950/40 border border-slate-800/80 rounded-xl p-3 text-xs">
+            <h4 class="font-semibold text-teal-400 flex items-center gap-1.5 mb-2">
+              <i data-lucide="arrow-right-left" class="w-4 h-4"></i> Healthier Swaps & Preparation Tips
+            </h4>
+            <ul id="swapsList" class="space-y-1 text-slate-300">
+              <!-- Populated via JS -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- 6. INTERACTIVE NUTRITION CHATBOT -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+          <h3 class="text-xs font-bold text-slate-300 flex items-center gap-2">
+            <i data-lucide="message-square" class="w-4 h-4 text-emerald-400"></i> Ask Local AI about this Food
+          </h3>
+
+          <!-- Chat messages box -->
+          <div id="chatMessages" class="max-h-48 overflow-y-auto space-y-2 text-xs pr-1">
+            <div class="bg-slate-800/70 text-slate-300 p-2.5 rounded-xl border border-slate-700/50 max-w-[85%]">
+              Hello! I'm your on-device AI nutritionist. Ask me anything about this meal, timing, substitutions, or macro balancing!
+            </div>
+          </div>
+
+          <!-- Chat input -->
+          <form id="chatForm" class="flex gap-2">
+            <input type="text" id="chatInput" placeholder="e.g. Can I eat this for late dinner?" class="flex-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition" />
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+              <span>Send</span>
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+    FoodVision 1.0 Production Release &bull; Powered by Deep Learning & Local AI
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

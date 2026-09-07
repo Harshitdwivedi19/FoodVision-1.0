@@ -1,0 +1,53 @@
+/* Custom styles and animations for FoodVision 1.0 */
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.6);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
+}
+
+.tab-btn.active {
+  background-color: rgb(30 41 59);
+  color: rgb(248 250 252);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.portion-btn.active {
+  background-color: rgb(5 150 105) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Shutter flash animation */
+@keyframes shutterFlash {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+.shutter-flash {
+  position: absolute;
+  inset: 0;
+  background-color: white;
+  pointer-events: none;
+  animation: shutterFlash 0.3s ease-out forwards;
+}
+
+/* Pulse animation for reticle */
+@keyframes reticleGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+#viewfinder {
+  animation: reticleGlow 2.5s infinite ease-in-out;
+}
